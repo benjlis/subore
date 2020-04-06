@@ -2,17 +2,12 @@ from sqlalchemy import create_engine
 from os import getenv
 import pandas as pd
 
-# read query file
-# with open('twihl.sql', 'r') as f:
-#    qry = f.read()
-# qry = "select id, authored, title, document_uri from marc_records " + \
-#        "where rtrim(title) = '' or authored is null;"
-
 prere = '(^| )'
-bodyre = '(influenza|flu|cholera|yellow fever|typhus|smallpox|measles|' +\
+bodyre = '(influenza|asian flu|hong kong flu|spanish flu|1918 flu|' +\
+         'cholera|yellow fever|typhus|smallpox|measles|' +\
          'malaria|encephalitis|polio|poliomyelitis|meningitis|dengue fever|' +\
          'hepatitis|ebola|HIV|AIDS|SARS|MERS|H1N1|Zika|COVID|coronavirus|' +\
-         'epidemic|pandemic|plague)'
+         'bubonic plague|epidemic|pandemic)'
 postre = '($| |,|;|\\\.|\\\?|!)'
 re = prere + bodyre + postre
 
@@ -23,10 +18,18 @@ qry = "select date, 'Clinton' collection," +\
          " id from declassification_clinton.docs " +\
          "  where subject regexp '{0}' or body regexp '{0}'".format(re) +\
          "  order by date"
-#        "  where subject regexp '{0}'".format(re)
 
 
-print(qry)
+def qry(corpus):
+    return """
+select date, classification, title,
+       convert(concat('http://history-lab.org/documents/', id), CHAR) id
+   from declassification_{1}.docs
+   where subject regexp '{0}' or body regexp '{0}'
+   order by date
+""".format(re, corpus)
+
+
 # db configuration and connection
 user = getenv('DBUSER')
 pswd = getenv('DBPSWD')
@@ -35,5 +38,9 @@ db = getenv('DBDB')
 connect_str = 'mysql+pymysql://' + user + ':' + pswd + '@' + host + '/' + db
 con = create_engine(connect_str)
 
-df = pd.read_sql_query(qry, con)
-df.to_excel("see.xlsx", engine='xlsxwriter')
+collections = ['frus', 'clinton', 'cables']
+for c in collections:
+    print('processsing {}'.format(c))
+    print(qry(c))
+#    df = pd.read_sql_query(qry(c), con)
+#    df.to_excel("see.xlsx", sheet_name=c, engine='xlsxwriter')
